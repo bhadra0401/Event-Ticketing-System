@@ -1,5 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
+declare const Deno: any;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -135,8 +137,27 @@ Deno.serve(async (req: Request) => {
       </html>
     `;
 
-    console.log(`Sending ticket email to ${email} for ${name}`);
-    console.log(`Ticket URL: ${ticketUrl}`);
+    
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resendApiKey}`,
+      },
+      body: JSON.stringify({
+        from: "Farewell Party <onboarding@resend.dev>",
+        to: email, 
+        subject: "🎉 Your Farewell Party Ticket is Here!",
+        html: emailHtml,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.text();
+      throw new Error(`Resend API error: ${errorData}`);
+    }
 
     return new Response(
       JSON.stringify({

@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
 import { supabase, StudentWithTicket, EventSettings } from '../lib/supabase';
-import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Database } from 'lucide-react';
+import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Database, LogOut } from 'lucide-react';
 import EventSettingsModal from './EventSettingsModal';
 import AddStudentModal from './AddStudentModal';
 import { insertSampleData } from '../utils/sampleData';
 
 export default function AdminDashboard() {
+  // Authentication State
+  const [session, setSession] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  // Existing State
   const [students, setStudents] = useState<StudentWithTicket[]>([]);
   const [eventSettings, setEventSettings] = useState<EventSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -14,8 +21,34 @@ export default function AdminDashboard() {
   const [showAddStudent, setShowAddStudent] = useState(false);
 
   useEffect(() => {
-    loadData();
+    // Check for existing login session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) loadData();
+      else setLoading(false);
+    });
+
+    // Listen for login/logout events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) loadData();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setLoginError('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setLoginError(error.message);
+    setLoading(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const loadData = async () => {
     try {
@@ -157,10 +190,41 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) {
+if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show Login Screen if not authenticated
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border border-gray-200">
+          <h1 className="text-2xl font-bold text-center text-gray-900 mb-6">Admin Login</h1>
+          {loginError && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{loginError}</div>}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input 
+                type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input 
+                type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition">
+              Login
+            </button>
+          </form>
+        </div>
       </div>
     );
   }

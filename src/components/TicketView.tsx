@@ -63,7 +63,7 @@ export default function TicketView() {
         margin: 2,
         color: {
           dark: '#000000',
-          light: '#fdfbf7' // Matches the vintage paper background
+          light: '#ffffff' 
         }
       });
 
@@ -78,140 +78,146 @@ export default function TicketView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-900 text-xl font-bold">Loading your ticket...</div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl font-bold tracking-widest animate-pulse">GENERATING TICKET...</div>
       </div>
     );
   }
 
   if (error || !ticket || !student || !eventSettings) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-xl border border-gray-200">
-          <div className="text-red-600 text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Ticket Not Found</h1>
-          <p className="text-gray-600">{error || 'This ticket does not exist or has been revoked.'}</p>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+        <div className="bg-gray-800 rounded-2xl p-8 max-w-md text-center shadow-xl border border-gray-700">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-white mb-2">Ticket Not Found</h1>
+          <p className="text-gray-400">{error || 'This ticket does not exist or has been revoked.'}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-10 bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+    <div className="p-4 sm:p-10 bg-black flex flex-col items-center justify-center min-h-screen font-sans">
       
-      {/* --- BEGIN NEW VINTAGE TICKET STYLE --- */}
-      {/* Fallback color #fdfbf7 used in case you don't have a background image yet */}
-      <div className="relative w-full max-w-[400px] bg-[#fdfbf7] bg-cover bg-center rounded-xl shadow-2xl border-4 border-[#e9dcc5] overflow-hidden">
+      {/* --- BEGIN DARK VINTAGE TICKET STYLE --- */}
+      {/* Used pure CSS gradient to perfectly match the brown/orange theme */}
+      <div 
+        className="relative w-full max-w-[420px] bg-gradient-to-br from-[#8b4513] via-[#6d320b] to-[#2a160d] text-white bg-cover bg-center rounded-xl shadow-2xl border-2 border-[#b57649] overflow-hidden"
+        style={{ backgroundImage: "url('/ticket-bg.png')" }} 
+      >
         
+        {/* Right side 'Tear off' line indicator */}
+        <div className="absolute right-12 top-0 bottom-0 w-px border-r-2 border-dashed border-white opacity-20"></div>
+
         {/* Aesthetic "VOID IF REMOVED" side text */}
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 rotate-180 text-gray-500 font-bold text-[9px] uppercase tracking-widest [writing-mode:vertical-rl] opacity-60">
-          VOID IF REMOVED • VOID IF REMOVED
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 rotate-180 text-white opacity-40 font-bold text-[10px] uppercase tracking-[0.3em] [writing-mode:vertical-rl]">
+          ADMIT ONE • FAREWELL 2024
         </div>
 
         {/* Main Ticket Content */}
-        <div className="p-8 pb-6 border-r-[12px] border-r-gray-400 border-opacity-30">
+        <div className="p-8 pb-8 pr-16">
           
           {/* Top Title Section */}
-          <div className="text-center mb-6">
-            <h1 className="font-serif italic font-black text-5xl sm:text-6xl text-teal-700 tracking-tight leading-tight">
-              FAREWELL PARTY
+          <div className="text-left mb-6">
+            <h1 className="font-serif italic font-black text-5xl sm:text-6xl text-[#fdfbf7] tracking-tight leading-none drop-shadow-lg">
+              FAREWELL<br/>PARTY
             </h1>
-            <p className="font-condensed font-bold text-base sm:text-lg text-black uppercase tracking-wider mt-1">
+            <p className="font-condensed font-bold text-sm sm:text-base text-white/90 uppercase tracking-[0.25em] mt-3">
               Dance • Music • Nightlife.
             </p>
           </div>
 
-          <hr className="border-gray-900 border-t-[1.5px] opacity-20 mb-6" />
+          <hr className="border-white border-t-[1px] opacity-20 mb-6" />
 
-          {/* Guest and Venue Data Grid */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5 text-sm">
+          {/* Guest and Venue Data Grid - Removed truncates! */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-6 text-sm">
             
             {/* Left Column */}
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <p className="font-condensed text-gray-700 font-semibold uppercase tracking-wider text-[11px] mb-1">Guest Name</p>
-                <p className="font-extrabold text-xl sm:text-2xl text-black leading-tight truncate">{student.name}</p>
+                <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Guest Name</p>
+                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words">{student.name}</p>
               </div>
               <div>
-                <p className="font-condensed text-gray-700 font-semibold uppercase tracking-wider text-[11px] mb-1">Roll Number</p>
-                <p className="font-extrabold text-xl sm:text-2xl text-black leading-tight">{student.roll_number}</p>
+                <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Roll Number</p>
+                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words">{student.roll_number}</p>
               </div>
               <div>
-                <p className="font-condensed text-gray-700 font-semibold uppercase tracking-wider text-[11px] mb-1">Date</p>
-                <p className="font-extrabold text-xl sm:text-2xl text-black leading-tight">{eventSettings.date}</p>
+                <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Date</p>
+                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug">{eventSettings.date}</p>
               </div>
             </div>
 
             {/* Right Column */}
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <p className="font-condensed text-gray-700 font-semibold uppercase tracking-wider text-[11px] mb-1">Venue</p>
-                <p className="font-extrabold text-xl sm:text-2xl text-black leading-tight truncate">{eventSettings.venue}</p>
+                <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Venue</p>
+                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words">{eventSettings.venue}</p>
               </div>
               <div>
-                <p className="font-condensed text-gray-700 font-semibold uppercase tracking-wider text-[11px] mb-1">Time</p>
-                <p className="font-extrabold text-xl sm:text-2xl text-black leading-tight">{eventSettings.time}</p>
+                <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Time</p>
+                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words">{eventSettings.time}</p>
               </div>
             </div>
           </div>
 
-          <hr className="border-gray-900 border-t-[1.5px] opacity-20 my-6" />
+          <hr className="border-white border-t-[1px] opacity-20 my-6" />
 
           {/* Dynamic Ticket Info */}
           <div className="flex justify-between items-end mb-6">
             <div>
-              <p className="font-condensed text-gray-700 font-semibold uppercase tracking-wider text-[11px] mb-1">Ticket ID</p>
-              <p className="font-extrabold text-2xl text-black leading-tight font-mono">{ticket.id.slice(0, 8).toUpperCase()}</p>
+              <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Ticket ID</p>
+              <p className="font-extrabold text-xl text-[#fdfbf7] leading-tight font-mono">{ticket.id.slice(0, 8).toUpperCase()}</p>
             </div>
             <div className="text-right">
-              <p className="font-condensed text-gray-700 font-semibold uppercase tracking-wider text-[11px] mb-1">Status</p>
-              <p className="font-extrabold text-2xl text-black leading-tight">INVITE ONLY</p>
+              <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Status</p>
+              <p className="font-extrabold text-xl text-[#fdfbf7] leading-tight">INVITE ONLY</p>
             </div>
           </div>
 
           {/* Barcode & Warning */}
-          <div className="space-y-5">
+          <div className="space-y-6 mt-8">
             
-            {/* Real QR Code */}
-            <div className="bg-white border-2 border-gray-300 rounded-xl p-4 flex justify-center shadow-sm">
+            {/* Real QR Code - Centered in a nice white box */}
+            <div className="bg-white p-3 rounded-xl flex justify-center shadow-2xl mx-auto w-fit">
               {qrCodeUrl && (
                 <img
                   src={qrCodeUrl}
                   alt="Ticket QR Code"
-                  className="rounded-lg w-48 h-48 mix-blend-multiply"
+                  className="rounded-lg w-40 h-40"
                 />
               )}
               <canvas ref={canvasRef} className="hidden" />
             </div>
 
             {ticket.status === 'checked_in' && (
-              <div className="bg-green-100 border-2 border-green-500 rounded-lg p-3 text-center">
-                <p className="text-green-800 font-black uppercase tracking-widest text-lg">✓ SCANNED</p>
-                <p className="text-green-700 text-xs font-bold mt-1">
+              <div className="bg-green-500 bg-opacity-20 border border-green-500 rounded-lg p-3 text-center">
+                <p className="text-green-400 font-black uppercase tracking-widest text-lg">✓ SCANNED</p>
+                <p className="text-green-300/80 text-xs font-bold mt-1">
                   Entered at {new Date(ticket.checked_in_at!).toLocaleTimeString()}
                 </p>
               </div>
             )}
 
-            {/* Red Warning Box */}
-            <div className="bg-[#E53E3E] text-white p-5 rounded-lg border-2 border-[#b52d2d] flex items-start gap-4 shadow-inner">
-              <div className="p-1.5 bg-white bg-opacity-20 rounded-md shrink-0">
-                <AlertTriangle className="text-white" size={24} />
+            {/* Warning Box */}
+            <div className="bg-black/40 text-white p-4 rounded-lg border border-red-500/50 flex items-start gap-4">
+              <div className="p-1.5 bg-red-500/20 rounded-md shrink-0">
+                <AlertTriangle className="text-red-400" size={20} />
               </div>
               <div>
-                <strong className="block text-sm font-extrabold uppercase tracking-wide">IMPORTANT:</strong>
-                <p className="text-xs mt-1 leading-relaxed font-medium opacity-90">
-                  College ID Card is MANDATORY for entry. You will not be allowed in without it.
+                <strong className="block text-xs font-extrabold text-red-400 uppercase tracking-wide">MANDATORY:</strong>
+                <p className="text-[11px] mt-1 leading-relaxed font-medium opacity-90 text-white/80">
+                  College ID Card is required for entry.
                 </p>
               </div>
             </div>
           </div>
         </div>
       </div>
-      {/* --- END NEW VINTAGE TICKET STYLE --- */}
+      {/* --- END DARK VINTAGE TICKET STYLE --- */}
 
-      <div className="mt-8 text-center">
-        <p className="text-sm text-gray-500 font-medium">Please present this digital ticket at the entrance.</p>
+      <div className="mt-8 text-center opacity-50">
+        <p className="text-xs text-white font-medium uppercase tracking-widest">Please present this digital ticket at the entrance.</p>
       </div>
     </div>
   );

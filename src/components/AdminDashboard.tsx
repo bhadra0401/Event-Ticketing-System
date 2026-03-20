@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase, StudentWithTicket, EventSettings } from '../lib/supabase';
-import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3 } from 'lucide-react';
+import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3, RotateCcw } from 'lucide-react';
 import EventSettingsModal from './EventSettingsModal';
 import AddStudentModal from './AddStudentModal';
 
@@ -58,8 +58,7 @@ export default function AdminDashboard() {
   const groupStats = useMemo(() => {
     const groups: Record<string, { total: number; invited: number }> = {};
     students.forEach(s => {
-      const rawName = s.group_name || 'Unassigned';
-      const gName = rawName.trim().toUpperCase(); 
+      const gName = (s.group_name || 'Unassigned').trim().toUpperCase();
       if (!groups[gName]) groups[gName] = { total: 0, invited: 0 };
       groups[gName].total++;
       if (s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in') groups[gName].invited++;
@@ -122,9 +121,20 @@ export default function AdminDashboard() {
     if (!error) {
       setGroupFilter(newName.trim().toUpperCase());
       loadData();
-    } else {
-      alert("Error renaming group: " + error.message);
     }
+    setLoading(false);
+  };
+
+  // --- NEW: DEACTIVATE TICKET ---
+  const deactivateTicket = async (studentId: string) => {
+    if (!confirm("Are you sure you want to deactivate this ticket? The student will not be able to enter until reactivated.")) return;
+    setLoading(true);
+    const { error } = await supabase
+      .from('tickets')
+      .update({ status: 'pending' })
+      .eq('student_id', studentId);
+    
+    if (!error) loadData();
     setLoading(false);
   };
 
@@ -183,7 +193,7 @@ export default function AdminDashboard() {
                 <div key={name} className="cursor-pointer group" onClick={() => setGroupFilter(name)}>
                   <div className="flex justify-between text-[10px] font-black uppercase mb-2">
                     <span className="text-gray-600 group-hover:text-blue-600 transition-colors">{name} ({stat.total})</span>
-                    <span className="text-blue-600">{Math.round((stat.invited/stat.total)*100)}%</span>
+                    <span className="text-blue-600">{stat.invited} / {stat.total}</span>
                   </div>
                   <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-blue-600 h-full transition-all duration-700" style={{ width: `${(stat.invited/stat.total)*100}%` }}></div>
@@ -194,59 +204,55 @@ export default function AdminDashboard() {
           </div>
           <div className="bg-black p-8 rounded-[2.5rem] flex flex-col justify-center text-white text-center">
             <h3 className="text-6xl font-black italic tracking-tighter">
-              {Math.round((students.filter(s => s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in').length / students.length) * 100) || 0}%
+              {students.filter(s => s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in').length}
             </h3>
-            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">Overall Progress</p>
+            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">Total Tickets Sent</p>
           </div>
         </div>
 
-        {/* --- DYNAMIC FILTER SUITE --- */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-            </div>
-            
-            <div className="flex gap-2 lg:col-span-1">
-              <select className="flex-1 bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
-                <option value="all">Group: All</option>
-                {Object.keys(groupStats).map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-              {groupFilter !== 'all' && groupFilter !== 'UNASSIGNED' && (
-                <button onClick={handleRenameGroup} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition shadow-sm" title="Rename this Group">
-                  <Edit3 size={16} />
-                </button>
-              )}
-            </div>
-
-            <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
-               <option value="all">Year: All</option>
-               <option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option><option value="N/A">N/A</option>
-            </select>
-
-            <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
-               <option value="all">Section: All</option>
-               <option value="A">Sec A</option><option value="B">Sec B</option><option value="C">Sec C</option><option value="D">Sec D</option><option value="N/A">N/A</option>
-            </select>
-
-            <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-               <option value="all">Status: All</option>
-               <option value="sent">Sent</option><option value="pending">Pending</option><option value="checked_in">Checked In</option>
-            </select>
+        {/* Filters */}
+        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
+          
+          <div className="flex gap-2">
+            <select className="flex-1 bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
+              <option value="all">Group: All</option>
+              {Object.keys(groupStats).map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            {groupFilter !== 'all' && groupFilter !== 'UNASSIGNED' && (
+              <button onClick={handleRenameGroup} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition shadow-sm"><Edit3 size={16} /></button>
+            )}
+          </div>
+
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+             <option value="all">Year: All</option>
+             <option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option><option value="N/A">N/A</option>
+          </select>
+
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
+             <option value="all">Section: All</option>
+             <option value="A">Sec A</option><option value="B">Sec B</option><option value="C">Sec C</option><option value="D">Sec D</option><option value="N/A">N/A</option>
+          </select>
+
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+             <option value="all">Status: All</option>
+             <option value="sent">Sent</option><option value="pending">Pending</option><option value="checked_in">Checked In</option>
+          </select>
         </div>
 
-        {/* Bulk Management Buttons */}
+        {/* Management Buttons */}
         <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
           <div className="flex flex-wrap gap-2">
             {selectedIds.length > 0 && (
               <>
-                <button onClick={() => { setNewGroupName(groupFilter !== 'all' ? groupFilter : ''); setShowGroupModal(true); }} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 transition active:scale-95">
-                  <Layers size={16}/> Move/Group ({selectedIds.length})
+                <button onClick={() => { setNewGroupName(groupFilter !== 'all' ? groupFilter : ''); setShowGroupModal(true); }} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 active:scale-95 transition-all">
+                  <Layers size={16}/> Group Selected ({selectedIds.length})
                 </button>
                 <button onClick={() => handleBulkGroupAction('remove')} className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase border border-red-100 hover:bg-red-100 transition">
-                  <UserMinus size={16}/> Kick from Group
+                  <UserMinus size={16}/> Remove from Group
                 </button>
               </>
             )}
@@ -257,20 +263,16 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Main Table */}
+        {/* Student Table */}
         <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-50 overflow-hidden">
           <table className="w-full text-left">
             <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] uppercase text-gray-400">
               <tr>
-                <th className="p-8 w-12 text-center">
-                  <button onClick={() => setSelectedIds(selectedIds.length === filteredAndSortedStudents.length ? [] : filteredAndSortedStudents.map(s => s.id))}>
-                    {selectedIds.length === filteredAndSortedStudents.length && filteredAndSortedStudents.length > 0 ? <CheckSquare className="text-blue-600"/> : <Square className="text-gray-200"/>}
-                  </button>
-                </th>
+                <th className="p-8 w-12 text-center"><button onClick={() => setSelectedIds(selectedIds.length === filteredAndSortedStudents.length ? [] : filteredAndSortedStudents.map(s => s.id))}>{selectedIds.length === filteredAndSortedStudents.length && filteredAndSortedStudents.length > 0 ? <CheckSquare className="text-blue-600"/> : <Square className="text-gray-200"/>}</button></th>
                 <th className="p-8 cursor-pointer group" onClick={() => toggleSort('name')}>Student {sortField === 'name' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
                 <th className="p-8 cursor-pointer group" onClick={() => toggleSort('roll_number')}>Group Details {sortField === 'roll_number' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
                 <th className="p-8">Status</th>
-                <th className="p-8 text-right">Action</th>
+                <th className="p-8 text-right text-gray-400">Manage Ticket</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -279,8 +281,30 @@ export default function AdminDashboard() {
                   <td className="p-8 text-center"><button onClick={() => setSelectedIds(prev => prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id])}>{selectedIds.includes(s.id) ? <CheckSquare className="text-blue-600" size={20}/> : <Square className="text-gray-200" size={20}/>}</button></td>
                   <td className="p-8 font-black text-gray-900 uppercase text-xs tracking-tight">{s.name}<br/><span className="text-[10px] text-gray-300">{s.roll_number}</span></td>
                   <td className="p-8"><span className="text-[10px] font-black uppercase text-gray-700">{s.group_name}</span><br/><span className="text-[9px] font-bold text-blue-500 uppercase opacity-50">Yr {s.year} • Sec {s.section}</span></td>
-                  <td className="p-8"><span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border tracking-widest ${s.ticket?.status === 'sent' ? 'bg-blue-50 text-blue-600 border-blue-100' : s.ticket?.status === 'checked_in' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>{s.ticket?.status || 'No Ticket'}</span></td>
-                  <td className="p-8 text-right"><button onClick={() => sendTicket(s)} disabled={sendingTicket === s.id} className="bg-gray-900 text-white p-3 rounded-xl shadow-lg hover:scale-110 disabled:opacity-30 transition-all"><Mail size={16}/></button></td>
+                  <td className="p-8">
+                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border tracking-widest ${
+                      s.ticket?.status === 'sent' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
+                      s.ticket?.status === 'checked_in' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'
+                    }`}>
+                      {s.ticket?.status || 'No Ticket'}
+                    </span>
+                  </td>
+                  <td className="p-8 text-right">
+                    <div className="flex gap-2 justify-end">
+                      {s.ticket?.status === 'sent' && (
+                        <button 
+                          onClick={() => deactivateTicket(s.id)}
+                          className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition"
+                          title="Deactivate Ticket"
+                        >
+                          <RotateCcw size={16}/>
+                        </button>
+                      )}
+                      <button onClick={() => sendTicket(s)} disabled={sendingTicket === s.id} className="bg-gray-900 text-white p-3 rounded-xl shadow-lg hover:scale-110 disabled:opacity-30 transition-all">
+                        <Mail size={16}/>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -288,11 +312,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Modal logic */}
+      {/* Modal */}
       {showGroupModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[3rem] p-10 max-w-md w-full shadow-2xl border border-white/20">
-            <h2 className="text-2xl font-black italic mb-6 uppercase">Move to Group</h2>
+            <h2 className="text-2xl font-black italic mb-2 uppercase">Move to Group</h2>
             <div className="space-y-4">
               <input type="text" placeholder="Group Label" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-sm" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
               <div className="grid grid-cols-2 gap-4">

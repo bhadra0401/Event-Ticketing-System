@@ -100,7 +100,6 @@ export default function TicketView() {
     <div className="p-4 sm:p-10 bg-black flex flex-col items-center justify-center min-h-screen font-sans">
       
       {/* --- BEGIN DARK VINTAGE TICKET STYLE --- */}
-      {/* Used pure CSS gradient to perfectly match the brown/orange theme */}
       <div 
         className="relative w-full max-w-[420px] bg-gradient-to-br from-[#8b4513] via-[#6d320b] to-[#2a160d] text-white bg-cover bg-center rounded-xl shadow-2xl border-2 border-[#b57649] overflow-hidden"
         style={{ backgroundImage: "url('/ticket-bg.png')" }} 
@@ -129,14 +128,12 @@ export default function TicketView() {
 
           <hr className="border-white border-t-[1px] opacity-20 mb-6" />
 
-          {/* Guest and Venue Data Grid - Removed truncates! */}
+          {/* Guest and Venue Data Grid */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 text-sm">
-            
-            {/* Left Column */}
             <div className="space-y-5">
               <div>
                 <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Guest Name</p>
-                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words">{student.name}</p>
+                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words uppercase">{student.name}</p>
               </div>
               <div>
                 <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Roll Number</p>
@@ -148,7 +145,6 @@ export default function TicketView() {
               </div>
             </div>
 
-            {/* Right Column */}
             <div className="space-y-5">
               <div>
                 <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Venue</p>
@@ -163,22 +159,32 @@ export default function TicketView() {
 
           <hr className="border-white border-t-[1px] opacity-20 my-6" />
 
-          {/* Dynamic Ticket Info */}
-          <div className="flex justify-between items-end mb-6">
+          {/* Dynamic Ticket Info & Signature */}
+          <div className="flex justify-between items-end mb-6 relative">
             <div>
               <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Ticket ID</p>
               <p className="font-extrabold text-xl text-[#fdfbf7] leading-tight font-mono">{ticket.id.slice(0, 8).toUpperCase()}</p>
             </div>
-            <div className="text-right">
-              <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Status</p>
-              <p className="font-extrabold text-xl text-[#fdfbf7] leading-tight">INVITE ONLY</p>
+
+            {/* --- SIGNATURE SECTION --- */}
+            <div className="text-right relative">
+              <div className="absolute bottom-4 right-0 w-32 h-16 pointer-events-none">
+                <img 
+                  src="/signature.png" 
+                  alt="Authorized Signature" 
+                  className="w-full h-full object-contain invert brightness-200 opacity-90 rotate-[-2deg]"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+              </div>
+              <div className="border-t border-white/30 pt-1">
+                <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px]">Authorized By</p>
+                <p className="font-serif italic text-sm text-[#fdfbf7]">Organizing Committee</p>
+              </div>
             </div>
           </div>
 
           {/* Barcode & Warning */}
           <div className="space-y-6 mt-8">
-            
-            {/* Real QR Code - Centered in a nice white box */}
             <div className="bg-white p-3 rounded-xl flex justify-center shadow-2xl mx-auto w-fit">
               {qrCodeUrl && (
                 <img
@@ -199,7 +205,6 @@ export default function TicketView() {
               </div>
             )}
 
-            {/* Warning Box */}
             <div className="bg-black/40 text-white p-4 rounded-lg border border-red-500/50 flex items-start gap-4">
               <div className="p-1.5 bg-red-500/20 rounded-md shrink-0">
                 <AlertTriangle className="text-red-400" size={20} />

@@ -107,7 +107,7 @@ export default function TicketView() {
         <div className="absolute right-12 top-0 bottom-0 w-px border-r-2 border-dashed border-white opacity-20"></div>
 
         <div className="absolute right-2 top-1/2 -translate-y-1/2 rotate-180 text-white opacity-40 font-bold text-[10px] uppercase tracking-[0.3em] [writing-mode:vertical-rl]">
-          ADMIT ONE • FAREWELL 2024
+          ADMIT ONE • FAREWELL 2026
         </div>
 
         <div className="p-8 pb-8 pr-16">

@@ -21,6 +21,10 @@ export default function AdminDashboard() {
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [eventSettings, setEventSettings] = useState<EventSettings | null>(null);
 
+  // NEW: Sort States
+  const [sortField, setSortField] = useState<'name' | 'roll_number'>('roll_number');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   // New Group Form
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupYear, setNewGroupYear] = useState('N/A');
@@ -66,14 +70,32 @@ export default function AdminDashboard() {
     return groups;
   }, [students]);
 
-  const filteredStudents = useMemo(() => {
-    return students.filter(s => {
+  // --- FILTER & SORT LOGIC ---
+  const filteredAndSortedStudents = useMemo(() => {
+    let result = students.filter(s => {
       const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             s.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesGroup = groupFilter === 'all' || s.group_name === groupFilter;
       return matchesSearch && matchesGroup;
     });
-  }, [students, searchTerm, groupFilter]);
+
+    // Handle Sorting
+    return result.sort((a, b) => {
+      const valA = (a[sortField] || '').toLowerCase();
+      const valB = (b[sortField] || '').toLowerCase();
+      if (sortOrder === 'asc') return valA.localeCompare(valB);
+      return valB.localeCompare(valA);
+    });
+  }, [students, searchTerm, groupFilter, sortField, sortOrder]);
+
+  const toggleSort = (field: 'name' | 'roll_number') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
 
   const handleBulkGroup = async () => {
     if (!newGroupName) return alert("Please enter a group name");
@@ -92,13 +114,38 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
-  const deleteSelected = async () => {
-    if (!confirm(`Delete ${selectedIds.length} students?`)) return;
-    setLoading(true);
-    await supabase.from('tickets').delete().in('student_id', selectedIds);
-    await supabase.from('students').delete().in('id', selectedIds);
-    setSelectedIds([]);
-    loadData();
+  const sendTicket = async (student: StudentWithTicket) => {
+    setSendingTicket(student.id);
+    try {
+      let currentTicketId = student.ticket?.id;
+      if (!currentTicketId) {
+        const { data: newTicket } = await supabase.from('tickets').insert({
+          student_id: student.id,
+          qr_hash: crypto.randomUUID(),
+          status: 'pending'
+        }).select().single();
+        currentTicketId = newTicket?.id;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-ticket`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ email: student.email, name: student.name, ticketId: currentTicketId })
+      });
+
+      if (response.ok) {
+        await supabase.from('tickets').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', currentTicketId);
+        await loadData();
+        alert(`Ticket sent to ${student.name}!`);
+      }
+    } catch (err) {
+      alert("Error sending ticket");
+    } finally {
+      setSendingTicket(null);
+    }
   };
 
   if (!session && !loading) {
@@ -145,10 +192,10 @@ export default function AdminDashboard() {
           <div className="bg-black p-8 rounded-[2.5rem] flex flex-col justify-center text-white">
             <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-1">Total Invited</p>
             <h3 className="text-6xl font-black italic tracking-tighter">
-              {Math.round((students.filter(s => s.ticket?.status === 'sent').length / students.length) * 100) || 0}%
+              {Math.round((students.filter(s => s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in').length / students.length) * 100) || 0}%
             </h3>
             <p className="text-[10px] font-bold mt-4 opacity-60">
-              {students.filter(s => s.ticket?.status === 'sent').length} / {students.length} students live.
+              {students.filter(s => s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in').length} / {students.length} students live.
             </p>
           </div>
         </div>
@@ -183,18 +230,26 @@ export default function AdminDashboard() {
             <thead className="bg-gray-50/50 border-b border-gray-100">
               <tr>
                 <th className="p-8 w-12 text-center">
-                  <button onClick={() => setSelectedIds(selectedIds.length === filteredStudents.length ? [] : filteredStudents.map(s => s.id))}>
-                    {selectedIds.length === filteredStudents.length && filteredStudents.length > 0 ? <CheckSquare className="text-blue-600"/> : <Square className="text-gray-200"/>}
+                  <button onClick={() => setSelectedIds(selectedIds.length === filteredAndSortedStudents.length ? [] : filteredAndSortedStudents.map(s => s.id))}>
+                    {selectedIds.length === filteredAndSortedStudents.length && filteredAndSortedStudents.length > 0 ? <CheckSquare className="text-blue-600"/> : <Square className="text-gray-200"/>}
                   </button>
                 </th>
-                <th className="p-8 text-[10px] font-black uppercase text-gray-400 tracking-widest">Student / ID</th>
-                <th className="p-8 text-[10px] font-black uppercase text-gray-400 tracking-widest">Group / Categorization</th>
+                <th className="p-8 cursor-pointer group" onClick={() => toggleSort('name')}>
+                  <div className="flex items-center gap-1 text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                    Student / ID {sortField === 'name' && (sortOrder === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+                  </div>
+                </th>
+                <th className="p-8 cursor-pointer group" onClick={() => toggleSort('roll_number')}>
+                  <div className="flex items-center gap-1 text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                    Group / Categorization {sortField === 'roll_number' && (sortOrder === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+                  </div>
+                </th>
                 <th className="p-8 text-[10px] font-black uppercase text-gray-400 tracking-widest">Status</th>
                 <th className="p-8 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredStudents.map(s => (
+              {filteredAndSortedStudents.map(s => (
                 <tr key={s.id} className={selectedIds.includes(s.id) ? 'bg-blue-50/40' : 'hover:bg-gray-50/30 transition-all'}>
                   <td className="p-8 text-center">
                     <button onClick={() => setSelectedIds(prev => prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id])}>
@@ -211,13 +266,20 @@ export default function AdminDashboard() {
                   </td>
                   <td className="p-8">
                     <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                      s.ticket?.status === 'sent' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-gray-50 text-gray-400 border-gray-100'
+                      s.ticket?.status === 'sent' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
+                      s.ticket?.status === 'checked_in' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'
                     }`}>
                       {s.ticket?.status || 'No Ticket'}
                     </span>
                   </td>
                   <td className="p-8 text-right">
-                    <button onClick={() => {/* sendTicket logic here */}} className="bg-gray-900 text-white p-3 rounded-2xl shadow-lg shadow-gray-100"><Mail size={16}/></button>
+                    <button 
+                      onClick={() => sendTicket(s)}
+                      disabled={sendingTicket === s.id}
+                      className="bg-gray-900 text-white p-3 rounded-2xl shadow-lg shadow-gray-100 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      <Mail size={16}/>
+                    </button>
                   </td>
                 </tr>
               ))}

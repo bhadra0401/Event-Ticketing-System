@@ -167,21 +167,22 @@ export default function TicketView() {
             </div>
 
             {/* --- SIGNATURE SECTION --- */}
-            <div className="text-right relative">
-              <div className="absolute bottom-4 right-0 w-32 h-16 pointer-events-none">
-                <img 
-                  src="/signature.png" 
-                  alt="Authorized Signature" 
-                  className="w-full h-full object-contain invert brightness-200 opacity-90 rotate-[-2deg]"
-                  onError={(e) => (e.currentTarget.style.display = 'none')}
-                />
-              </div>
-              <div className="border-t border-white/30 pt-1">
-                <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px]">Authorized By</p>
-                <p className="font-serif italic text-sm text-[#fdfbf7]">Organizing Committee</p>
-              </div>
-            </div>
-          </div>
+            {/* --- UPDATED SIGNATURE SECTION --- */}
+<div className="text-right relative mt-4">
+  <div className="absolute bottom-6 right-0 w-40 h-20 pointer-events-none z-10">
+    <img 
+      src="/signature.png" 
+      alt="Authorized Signature" 
+      {/* Increased brightness to 300% and size to w-40 to make it pop */}
+      className="w-full h-full object-contain invert brightness-[3] contrast-150 opacity-100 rotate-[-3deg]"
+      onError={(e) => (e.currentTarget.style.display = 'none')}
+    />
+  </div>
+  <div className="border-t border-white/40 pt-2">
+    <p className="font-condensed text-white/70 font-bold uppercase tracking-[0.2em] text-[10px]">Authorized By</p>
+    <p className="font-serif italic text-base text-[#fdfbf7] mt-0.5">Organizing Committee</p>
+  </div>
+</div>
 
           {/* Barcode & Warning */}
           <div className="space-y-6 mt-8">

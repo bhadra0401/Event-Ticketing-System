@@ -99,7 +99,6 @@ export default function TicketView() {
   return (
     <div className="p-4 sm:p-10 bg-black flex flex-col items-center justify-center min-h-screen font-sans">
       
-      {/* --- BEGIN DARK VINTAGE TICKET STYLE --- */}
       <div 
         className="relative w-full max-w-[420px] bg-gradient-to-br from-[#8b4513] via-[#6d320b] to-[#2a160d] text-white bg-cover bg-center rounded-xl shadow-2xl border-2 border-[#b57649] overflow-hidden"
         style={{ backgroundImage: "url('/ticket-bg.png')" }} 
@@ -114,7 +113,7 @@ export default function TicketView() {
         <div className="p-8 pb-8 pr-16">
           
           <div className="text-left mb-6">
-            <h1 className="font-serif italic font-black text-5xl sm:text-6xl text-[#fdfbf7] tracking-tight leading-none drop-shadow-lg">
+            <h1 className="font-serif italic font-black text-5xl sm:text-6xl text-[#fdfbf7] tracking-tight leading-none drop-shadow-lg uppercase">
               FAREWELL<br/>PARTY
             </h1>
             <p className="font-condensed font-bold text-sm sm:text-base text-white/90 uppercase tracking-[0.25em] mt-3">
@@ -143,37 +142,37 @@ export default function TicketView() {
             <div className="space-y-5">
               <div>
                 <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Venue</p>
-                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words">{eventSettings.venue}</p>
+                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words uppercase">{eventSettings.venue}</p>
               </div>
               <div>
                 <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Time</p>
-                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words">{eventSettings.time}</p>
+                <p className="font-extrabold text-lg text-[#fdfbf7] leading-snug break-words uppercase">{eventSettings.time}</p>
               </div>
             </div>
           </div>
 
           <hr className="border-white border-t-[1px] opacity-20 my-6" />
 
-          {/* Dynamic Ticket Info & Signature Row */}
+          {/* Corrected Info & Signature Row */}
           <div className="flex justify-between items-end mb-6 relative">
             <div>
               <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Ticket ID</p>
               <p className="font-extrabold text-xl text-[#fdfbf7] leading-tight font-mono">{ticket.id.slice(0, 8).toUpperCase()}</p>
             </div>
 
-            {/* Signature Section */}
+            {/* Signature Placement Fix */}
             <div className="text-right relative">
-              <div className="absolute bottom-6 right-0 w-40 h-20 pointer-events-none z-10">
+              <div className="absolute -top-12 right-0 w-36 h-20 pointer-events-none z-20">
                 <img 
                   src="/signature.png" 
-                  alt="Authorized Signature" 
-                  className="w-full h-full object-contain invert brightness-[3] contrast-150 opacity-100 rotate-[-3deg]"
+                  alt="Authorized" 
+                  className="w-full h-full object-contain invert-[1] brightness-[5] contrast-[200%] rotate-[-4deg] drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]"
                   onError={(e) => (e.currentTarget.style.display = 'none')}
                 />
               </div>
-              <div className="border-t border-white/40 pt-2">
-                <p className="font-condensed text-white/70 font-bold uppercase tracking-[0.2em] text-[10px]">Authorized By</p>
-                <p className="font-serif italic text-base text-[#fdfbf7] mt-0.5">Organizing Committee</p>
+              <div className="border-t border-white/40 pt-1">
+                <p className="font-condensed text-white/70 font-bold uppercase tracking-widest text-[10px]">Authorized By</p>
+                <p className="font-serif italic text-sm text-[#fdfbf7]">Organizing Committee</p>
               </div>
             </div>
           </div>
@@ -183,7 +182,7 @@ export default function TicketView() {
               {qrCodeUrl && (
                 <img
                   src={qrCodeUrl}
-                  alt="Ticket QR Code"
+                  alt="QR Code"
                   className="rounded-lg w-40 h-40"
                 />
               )}

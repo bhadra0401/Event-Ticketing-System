@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase, Student, Ticket, EventSettings } from '../lib/supabase';
 import QRCode from 'qrcode';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Lock } from 'lucide-react';
 
 export default function TicketView() {
   const { ticketId } = useParams<{ ticketId: string }>();
@@ -39,11 +39,17 @@ export default function TicketView() {
           .maybeSingle()
       ]);
 
-      if (!ticketRes.data) {
-        setError('Ticket not found');
+      // --- SECURITY CHECK: BLOCK PENDING/DEACTIVATED TICKETS ---
+      if (!ticketRes.data || ticketRes.data.status === 'pending') {
+        setError(
+          !ticketRes.data 
+            ? 'Ticket not found.' 
+            : 'Your ticket is currently deactivated. Please contact the Organizing Committee or complete your payment to reactivate it.'
+        );
         setLoading(false);
         return;
       }
+      // -------------------------------------------------------
 
       setTicket(ticketRes.data);
       setStudent(ticketRes.data.student as Student);
@@ -84,13 +90,21 @@ export default function TicketView() {
     );
   }
 
+  // Updated Error UI to look more professional for deactivated tickets
   if (error || !ticket || !student || !eventSettings) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-2xl p-8 max-w-md text-center shadow-xl border border-gray-700">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-white mb-2">Ticket Not Found</h1>
-          <p className="text-gray-400">{error || 'This ticket does not exist or has been revoked.'}</p>
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="bg-gray-900 rounded-3xl p-10 max-w-md text-center shadow-2xl border border-white/10">
+          <div className="bg-red-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="text-red-500" size={40} />
+          </div>
+          <h1 className="text-2xl font-black text-white mb-4 uppercase tracking-tight">Access Restricted</h1>
+          <p className="text-gray-400 leading-relaxed font-medium">
+            {error || 'This ticket has been revoked or is currently inactive.'}
+          </p>
+          <div className="mt-8 pt-8 border-t border-white/5">
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Farewell 2026 Support</p>
+          </div>
         </div>
       </div>
     );

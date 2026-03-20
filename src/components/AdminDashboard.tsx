@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase, StudentWithTicket, EventSettings } from '../lib/supabase';
-import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus } from 'lucide-react';
+import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3 } from 'lucide-react';
 import EventSettingsModal from './EventSettingsModal';
 import AddStudentModal from './AddStudentModal';
 
 export default function AdminDashboard() {
   const [session, setSession] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [students, setStudents] = useState<StudentWithTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingTicket, setSendingTicket] = useState<string | null>(null);
@@ -56,7 +58,8 @@ export default function AdminDashboard() {
   const groupStats = useMemo(() => {
     const groups: Record<string, { total: number; invited: number }> = {};
     students.forEach(s => {
-      const gName = s.group_name || 'Unassigned';
+      const rawName = s.group_name || 'Unassigned';
+      const gName = rawName.trim().toUpperCase(); 
       if (!groups[gName]) groups[gName] = { total: 0, invited: 0 };
       groups[gName].total++;
       if (s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in') groups[gName].invited++;
@@ -64,11 +67,10 @@ export default function AdminDashboard() {
     return groups;
   }, [students]);
 
-  // --- MULTI-FILTER & SMART SORT LOGIC ---
-  const filteredStudents = useMemo(() => {
+  const filteredAndSortedStudents = useMemo(() => {
     let result = students.filter(s => {
       const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesGroup = groupFilter === 'all' || s.group_name === groupFilter;
+      const matchesGroup = groupFilter === 'all' || s.group_name.trim().toUpperCase() === groupFilter.trim().toUpperCase();
       const matchesYear = yearFilter === 'all' || s.year === yearFilter;
       const matchesSection = sectionFilter === 'all' || s.section === sectionFilter;
       const matchesStatus = statusFilter === 'all' || (s.ticket?.status || 'pending') === statusFilter;
@@ -91,15 +93,37 @@ export default function AdminDashboard() {
 
   const handleBulkGroupAction = async (mode: 'update' | 'remove') => {
     setLoading(true);
+    const normalizedName = newGroupName.trim().toUpperCase();
     const updates = mode === 'update' 
-      ? { group_name: newGroupName, year: newGroupYear, section: newGroupSec }
-      : { group_name: 'Unassigned', year: 'N/A', section: 'N/A' };
+      ? { group_name: normalizedName, year: newGroupYear, section: newGroupSec }
+      : { group_name: 'UNASSIGNED', year: 'N/A', section: 'N/A' };
 
     const { error } = await supabase.from('students').update(updates).in('id', selectedIds);
     if (!error) {
       setSelectedIds([]);
       setShowGroupModal(false);
+      setNewGroupName('');
       loadData();
+    }
+    setLoading(false);
+  };
+
+  const handleRenameGroup = async () => {
+    if (groupFilter === 'all' || groupFilter === 'UNASSIGNED') return;
+    const newName = prompt(`Enter new name for group "${groupFilter}":`, groupFilter);
+    if (!newName || newName.trim().toUpperCase() === groupFilter.toUpperCase()) return;
+
+    setLoading(true);
+    const { error } = await supabase
+      .from('students')
+      .update({ group_name: newName.trim().toUpperCase() })
+      .eq('group_name', groupFilter);
+
+    if (!error) {
+      setGroupFilter(newName.trim().toUpperCase());
+      loadData();
+    } else {
+      alert("Error renaming group: " + error.message);
     }
     setLoading(false);
   };
@@ -133,14 +157,27 @@ export default function AdminDashboard() {
     }
   };
 
+  if (!session && !loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full border border-gray-100 font-sans text-center">
+          <h1 className="text-3xl font-black italic tracking-tighter mb-8 uppercase">Admin Access</h1>
+          <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-4 outline-none font-bold" />
+          <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-8 outline-none font-bold" />
+          <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs hover:bg-gray-800 transition">Login</button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#fcfcfd] pb-20 font-sans">
       <div className="max-w-7xl mx-auto px-4 py-8">
         
-        {/* Progress Dashboard */}
+        {/* Progress Section */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
           <div className="lg:col-span-3 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-            <h2 className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6"><BarChart3 size={16}/> Group Progress Breakdown</h2>
+            <h2 className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6"><BarChart3 size={16}/> Group Progress</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
               {Object.entries(groupStats).map(([name, stat]) => (
                 <div key={name} className="cursor-pointer group" onClick={() => setGroupFilter(name)}>
@@ -149,32 +186,39 @@ export default function AdminDashboard() {
                     <span className="text-blue-600">{Math.round((stat.invited/stat.total)*100)}%</span>
                   </div>
                   <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-blue-600 h-full transition-all" style={{ width: `${(stat.invited/stat.total)*100}%` }}></div>
+                    <div className="bg-blue-600 h-full transition-all duration-700" style={{ width: `${(stat.invited/stat.total)*100}%` }}></div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          <div className="bg-black p-8 rounded-[2.5rem] flex flex-col justify-center text-white">
+          <div className="bg-black p-8 rounded-[2.5rem] flex flex-col justify-center text-white text-center">
             <h3 className="text-6xl font-black italic tracking-tighter">
               {Math.round((students.filter(s => s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in').length / students.length) * 100) || 0}%
             </h3>
-            <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-2">Global Progress</p>
+            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">Overall Progress</p>
           </div>
         </div>
 
         {/* --- DYNAMIC FILTER SUITE --- */}
         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="relative col-span-1 lg:col-span-1">
+            <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" placeholder="Quick find..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
             
-            <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
-               <option value="all">Group: All</option>
-               {Object.keys(groupStats).map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
+            <div className="flex gap-2 lg:col-span-1">
+              <select className="flex-1 bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
+                <option value="all">Group: All</option>
+                {Object.keys(groupStats).map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              {groupFilter !== 'all' && groupFilter !== 'UNASSIGNED' && (
+                <button onClick={handleRenameGroup} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition shadow-sm" title="Rename this Group">
+                  <Edit3 size={16} />
+                </button>
+              )}
+            </div>
 
             <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
                <option value="all">Year: All</option>
@@ -193,84 +237,50 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* --- BULK GROUP MANAGEMENT --- */}
+        {/* Bulk Management Buttons */}
         <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
           <div className="flex flex-wrap gap-2">
             {selectedIds.length > 0 && (
               <>
-                <button 
-                  onClick={() => { 
-                    setNewGroupName(groupFilter !== 'all' ? groupFilter : ''); 
-                    setShowGroupModal(true); 
-                  }} 
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 active:scale-95 transition-all"
-                >
-                  <Layers size={16}/> Group/Update Selected ({selectedIds.length})
+                <button onClick={() => { setNewGroupName(groupFilter !== 'all' ? groupFilter : ''); setShowGroupModal(true); }} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 transition active:scale-95">
+                  <Layers size={16}/> Move/Group ({selectedIds.length})
                 </button>
-                <button 
-                  onClick={() => handleBulkGroupAction('remove')} 
-                  className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase border border-red-100 hover:bg-red-100 transition-all"
-                >
+                <button onClick={() => handleBulkGroupAction('remove')} className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase border border-red-100 hover:bg-red-100 transition">
                   <UserMinus size={16}/> Kick from Group
                 </button>
               </>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowAddStudent(true)} className="bg-black text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg hover:bg-gray-800 transition-all">Add Student</button>
-            <button onClick={loadData} className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm text-gray-400 hover:text-black transition-all"><RefreshCw size={18}/></button>
+            <button onClick={() => setShowAddStudent(true)} className="bg-black text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg hover:bg-gray-800 transition">Add Student</button>
+            <button onClick={loadData} className="p-3 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-black transition shadow-sm"><RefreshCw size={18}/></button>
           </div>
         </div>
 
-        {/* --- TABLE --- */}
+        {/* Main Table */}
         <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-50 overflow-hidden">
           <table className="w-full text-left">
-            <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] uppercase text-gray-400 tracking-widest">
+            <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] uppercase text-gray-400">
               <tr>
                 <th className="p-8 w-12 text-center">
-                  <button onClick={() => setSelectedIds(selectedIds.length === filteredStudents.length ? [] : filteredStudents.map(s => s.id))}>
-                    {selectedIds.length === filteredStudents.length && filteredStudents.length > 0 ? <CheckSquare className="text-blue-600"/> : <Square className="text-gray-200"/>}
+                  <button onClick={() => setSelectedIds(selectedIds.length === filteredAndSortedStudents.length ? [] : filteredAndSortedStudents.map(s => s.id))}>
+                    {selectedIds.length === filteredAndSortedStudents.length && filteredAndSortedStudents.length > 0 ? <CheckSquare className="text-blue-600"/> : <Square className="text-gray-200"/>}
                   </button>
                 </th>
-                <th className="p-8 cursor-pointer group" onClick={() => toggleSort('name')}>
-                  Student / ID {sortField === 'name' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}
-                </th>
-                <th className="p-8 cursor-pointer group" onClick={() => toggleSort('roll_number')}>
-                  Group / Details {sortField === 'roll_number' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}
-                </th>
+                <th className="p-8 cursor-pointer group" onClick={() => toggleSort('name')}>Student {sortField === 'name' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
+                <th className="p-8 cursor-pointer group" onClick={() => toggleSort('roll_number')}>Group Details {sortField === 'roll_number' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
                 <th className="p-8">Status</th>
                 <th className="p-8 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredStudents.map(s => (
+              {filteredAndSortedStudents.map(s => (
                 <tr key={s.id} className={selectedIds.includes(s.id) ? 'bg-blue-50/40' : 'hover:bg-gray-50/30 transition-all'}>
-                  <td className="p-8 text-center">
-                    <button onClick={() => setSelectedIds(prev => prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id])}>
-                      {selectedIds.includes(s.id) ? <CheckSquare className="text-blue-600" size={20}/> : <Square className="text-gray-200" size={20}/>}
-                    </button>
-                  </td>
-                  <td className="p-8">
-                    <p className="font-black text-gray-900 uppercase text-xs tracking-tight">{s.name}</p>
-                    <p className="text-[10px] text-gray-300 font-black mt-1">{s.roll_number}</p>
-                  </td>
-                  <td className="p-8">
-                    <p className={`text-[10px] font-black uppercase ${s.group_name === 'Unassigned' ? 'text-gray-200 italic' : 'text-gray-700'}`}>{s.group_name}</p>
-                    <p className="text-[9px] font-bold text-blue-500 uppercase opacity-50">Yr {s.year} • Sec {s.section}</p>
-                  </td>
-                  <td className="p-8">
-                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border tracking-widest ${
-                      s.ticket?.status === 'sent' ? 'bg-blue-50 text-blue-600 border-blue-100' : 
-                      s.ticket?.status === 'checked_in' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'
-                    }`}>
-                      {s.ticket?.status || 'No Ticket'}
-                    </span>
-                  </td>
-                  <td className="p-8 text-right">
-                    <button onClick={() => sendTicket(s)} disabled={sendingTicket === s.id} className="bg-gray-900 text-white p-3 rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all disabled:opacity-30">
-                      <Mail size={16}/>
-                    </button>
-                  </td>
+                  <td className="p-8 text-center"><button onClick={() => setSelectedIds(prev => prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id])}>{selectedIds.includes(s.id) ? <CheckSquare className="text-blue-600" size={20}/> : <Square className="text-gray-200" size={20}/>}</button></td>
+                  <td className="p-8 font-black text-gray-900 uppercase text-xs tracking-tight">{s.name}<br/><span className="text-[10px] text-gray-300">{s.roll_number}</span></td>
+                  <td className="p-8"><span className="text-[10px] font-black uppercase text-gray-700">{s.group_name}</span><br/><span className="text-[9px] font-bold text-blue-500 uppercase opacity-50">Yr {s.year} • Sec {s.section}</span></td>
+                  <td className="p-8"><span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border tracking-widest ${s.ticket?.status === 'sent' ? 'bg-blue-50 text-blue-600 border-blue-100' : s.ticket?.status === 'checked_in' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>{s.ticket?.status || 'No Ticket'}</span></td>
+                  <td className="p-8 text-right"><button onClick={() => sendTicket(s)} disabled={sendingTicket === s.id} className="bg-gray-900 text-white p-3 rounded-xl shadow-lg hover:scale-110 disabled:opacity-30 transition-all"><Mail size={16}/></button></td>
                 </tr>
               ))}
             </tbody>
@@ -278,27 +288,25 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Unified Grouping Modal */}
+      {/* Modal logic */}
       {showGroupModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[3rem] p-10 max-w-md w-full shadow-2xl border border-white/20">
-            <h2 className="text-2xl font-black italic mb-2 uppercase tracking-tighter">Assign Members</h2>
-            <p className="text-[10px] font-black uppercase text-gray-400 mb-8">Move {selectedIds.length} members into group</p>
-            
+            <h2 className="text-2xl font-black italic mb-6 uppercase">Move to Group</h2>
             <div className="space-y-4">
-              <input type="text" placeholder="Group Label" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-sm border-none focus:ring-2 focus:ring-blue-500" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
+              <input type="text" placeholder="Group Label" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-sm" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
               <div className="grid grid-cols-2 gap-4">
-                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none border-none" value={newGroupYear} onChange={e => setNewGroupYear(e.target.value)}>
+                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none" value={newGroupYear} onChange={e => setNewGroupYear(e.target.value)}>
                   <option value="N/A">Year N/A</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
                 </select>
-                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none border-none" value={newGroupSec} onChange={e => setNewGroupSec(e.target.value)}>
-                  <option value="N/A">Sec N/A</option><option value="A">Sec A</option><option value="B">Sec B</option><option value="C">Sec C</option><option value="D">Sec D</option>
+                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none" value={newGroupSec} onChange={e => setNewGroupSec(e.target.value)}>
+                  <option value="N/A">Sec N/A</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
                 </select>
               </div>
             </div>
             <div className="flex gap-4 mt-10">
-              <button onClick={() => setShowGroupModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-600 font-black rounded-2xl uppercase text-[10px] tracking-widest">Cancel</button>
-              <button onClick={() => handleBulkGroupAction('update')} className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100">Apply Changes</button>
+              <button onClick={() => setShowGroupModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-600 font-black rounded-2xl uppercase text-[10px]">Cancel</button>
+              <button onClick={() => handleBulkGroupAction('update')} className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-[10px] shadow-xl shadow-blue-100">Apply</button>
             </div>
           </div>
         </div>

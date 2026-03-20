@@ -105,18 +105,14 @@ export default function TicketView() {
         style={{ backgroundImage: "url('/ticket-bg.png')" }} 
       >
         
-        {/* Right side 'Tear off' line indicator */}
         <div className="absolute right-12 top-0 bottom-0 w-px border-r-2 border-dashed border-white opacity-20"></div>
 
-        {/* Aesthetic "VOID IF REMOVED" side text */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 rotate-180 text-white opacity-40 font-bold text-[10px] uppercase tracking-[0.3em] [writing-mode:vertical-rl]">
           ADMIT ONE • FAREWELL 2024
         </div>
 
-        {/* Main Ticket Content */}
         <div className="p-8 pb-8 pr-16">
           
-          {/* Top Title Section */}
           <div className="text-left mb-6">
             <h1 className="font-serif italic font-black text-5xl sm:text-6xl text-[#fdfbf7] tracking-tight leading-none drop-shadow-lg">
               FAREWELL<br/>PARTY
@@ -128,7 +124,6 @@ export default function TicketView() {
 
           <hr className="border-white border-t-[1px] opacity-20 mb-6" />
 
-          {/* Guest and Venue Data Grid */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 text-sm">
             <div className="space-y-5">
               <div>
@@ -159,32 +154,30 @@ export default function TicketView() {
 
           <hr className="border-white border-t-[1px] opacity-20 my-6" />
 
-          {/* Dynamic Ticket Info & Signature */}
+          {/* Dynamic Ticket Info & Signature Row */}
           <div className="flex justify-between items-end mb-6 relative">
             <div>
               <p className="font-condensed text-white/60 font-bold uppercase tracking-widest text-[10px] mb-1">Ticket ID</p>
               <p className="font-extrabold text-xl text-[#fdfbf7] leading-tight font-mono">{ticket.id.slice(0, 8).toUpperCase()}</p>
             </div>
 
-            {/* --- SIGNATURE SECTION --- */}
-            {/* --- UPDATED SIGNATURE SECTION --- */}
-<div className="text-right relative mt-4">
-  <div className="absolute bottom-6 right-0 w-40 h-20 pointer-events-none z-10">
-    <img 
-      src="/signature.png" 
-      alt="Authorized Signature" 
-      {/* Increased brightness to 300% and size to w-40 to make it pop */}
-      className="w-full h-full object-contain invert brightness-[3] contrast-150 opacity-100 rotate-[-3deg]"
-      onError={(e) => (e.currentTarget.style.display = 'none')}
-    />
-  </div>
-  <div className="border-t border-white/40 pt-2">
-    <p className="font-condensed text-white/70 font-bold uppercase tracking-[0.2em] text-[10px]">Authorized By</p>
-    <p className="font-serif italic text-base text-[#fdfbf7] mt-0.5">Organizing Committee</p>
-  </div>
-</div>
+            {/* Signature Section */}
+            <div className="text-right relative">
+              <div className="absolute bottom-6 right-0 w-40 h-20 pointer-events-none z-10">
+                <img 
+                  src="/signature.png" 
+                  alt="Authorized Signature" 
+                  className="w-full h-full object-contain invert brightness-[3] contrast-150 opacity-100 rotate-[-3deg]"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+              </div>
+              <div className="border-t border-white/40 pt-2">
+                <p className="font-condensed text-white/70 font-bold uppercase tracking-[0.2em] text-[10px]">Authorized By</p>
+                <p className="font-serif italic text-base text-[#fdfbf7] mt-0.5">Organizing Committee</p>
+              </div>
+            </div>
+          </div>
 
-          {/* Barcode & Warning */}
           <div className="space-y-6 mt-8">
             <div className="bg-white p-3 rounded-xl flex justify-center shadow-2xl mx-auto w-fit">
               {qrCodeUrl && (
@@ -220,7 +213,6 @@ export default function TicketView() {
           </div>
         </div>
       </div>
-      {/* --- END DARK VINTAGE TICKET STYLE --- */}
 
       <div className="mt-8 text-center opacity-50">
         <p className="text-xs text-white font-medium uppercase tracking-widest">Please present this digital ticket at the entrance.</p>

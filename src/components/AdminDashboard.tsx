@@ -95,26 +95,59 @@ export default function AdminDashboard() {
   };
 
   const sendTicket = async (student: StudentWithTicket) => {
-    setSendingTicket(student.id);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-ticket`, {
+  setSendingTicket(student.id);
+  try {
+    let currentTicketId = student.ticket?.id;
+
+    // AUTO-GENERATE TICKET IF MISSING
+    if (!currentTicketId) {
+      const qrHash = crypto.randomUUID();
+      const { data: newTicket, error: ticketError } = await supabase
+        .from('tickets')
+        .insert({
+          student_id: student.id,
+          qr_hash: qrHash,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (ticketError || !newTicket) throw new Error("Could not create ticket");
+      currentTicketId = newTicket.id;
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-ticket`,
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify({ email: student.email, name: student.name, ticketId: student.ticket?.id })
-      });
-      if (!response.ok) throw new Error();
-      await supabase.from('tickets').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', student.ticket?.id);
-      await loadData();
-      alert('Ticket sent!');
-    } catch (err) {
-      alert('Failed to send.');
-    } finally {
-      setSendingTicket(null);
-    }
-  };
+        body: JSON.stringify({
+          email: student.email,
+          name: student.name,
+          ticketId: currentTicketId
+        })
+      }
+    );
+
+    if (!response.ok) throw new Error('Failed to send email');
+
+    await supabase
+      .from('tickets')
+      .update({ status: 'sent', sent_at: new Date().toISOString() })
+      .eq('id', currentTicketId);
+
+    await loadData();
+    alert('Ticket sent successfully!');
+    
+  } catch (error: any) {
+    alert(`Failed: ${error.message}`);
+  } finally {
+    setSendingTicket(null);
+  }
+};
 
   const stats = {
     total: students.length,

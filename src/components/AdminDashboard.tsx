@@ -12,7 +12,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [sendingTicket, setSendingTicket] = useState<string | null>(null);
 
-  // Filters & UI
   const [searchTerm, setSearchTerm] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -21,11 +20,9 @@ export default function AdminDashboard() {
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [eventSettings, setEventSettings] = useState<EventSettings | null>(null);
 
-  // NEW: Sort States
   const [sortField, setSortField] = useState<'name' | 'roll_number'>('roll_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  // New Group Form
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupYear, setNewGroupYear] = useState('N/A');
   const [newGroupSec, setNewGroupSec] = useState('N/A');
@@ -58,7 +55,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- PROGRESS LOGIC ---
   const groupStats = useMemo(() => {
     const groups: Record<string, { total: number; invited: number }> = {};
     students.forEach(s => {
@@ -70,7 +66,7 @@ export default function AdminDashboard() {
     return groups;
   }, [students]);
 
-  // --- FILTER & SORT LOGIC ---
+  // --- IMPROVED SMART SORTING LOGIC ---
   const filteredAndSortedStudents = useMemo(() => {
     let result = students.filter(s => {
       const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -79,12 +75,16 @@ export default function AdminDashboard() {
       return matchesSearch && matchesGroup;
     });
 
-    // Handle Sorting
     return result.sort((a, b) => {
-      const valA = (a[sortField] || '').toLowerCase();
-      const valB = (b[sortField] || '').toLowerCase();
-      if (sortOrder === 'asc') return valA.localeCompare(valB);
-      return valB.localeCompare(valA);
+      // Use the actual selected sortField (name or roll_number)
+      const valA = String(a[sortField] || '').toLowerCase();
+      const valB = String(b[sortField] || '').toLowerCase();
+      
+      if (sortOrder === 'asc') {
+        return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+      } else {
+        return valB.localeCompare(valA, undefined, { numeric: true, sensitivity: 'base' });
+      }
     });
   }, [students, searchTerm, groupFilter, sortField, sortOrder]);
 
@@ -139,10 +139,7 @@ export default function AdminDashboard() {
       if (response.ok) {
         await supabase.from('tickets').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', currentTicketId);
         await loadData();
-        alert(`Ticket sent to ${student.name}!`);
       }
-    } catch (err) {
-      alert("Error sending ticket");
     } finally {
       setSendingTicket(null);
     }
@@ -150,8 +147,8 @@ export default function AdminDashboard() {
 
   if (!session && !loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans">
-        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full border border-gray-100">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full border border-gray-100 font-sans">
           <h1 className="text-3xl font-black text-center mb-8 italic tracking-tighter">ADMIN ACCESS</h1>
           <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-4 outline-none border-none font-bold" />
           <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-8 outline-none border-none font-bold" />
@@ -165,7 +162,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-[#fcfcfd] pb-20 font-sans">
       <div className="max-w-7xl mx-auto px-4 py-8">
         
-        {/* --- DYNAMIC PROGRESS DASHBOARD --- */}
+        {/* Progress Section */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
           <div className="lg:col-span-3 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
             <h2 className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">
@@ -200,7 +197,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* --- SEARCH & FILTERS --- */}
+        {/* Controls */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
           <div className="flex gap-2 w-full md:w-auto">
             <div className="relative flex-1 md:w-80">
@@ -224,7 +221,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* --- TABLE --- */}
+        {/* --- TABLE WITH TWO SORTABLE HEADERS --- */}
         <div className="bg-white rounded-[3rem] shadow-2xl shadow-gray-200/50 border border-gray-50 overflow-hidden">
           <table className="w-full text-left">
             <thead className="bg-gray-50/50 border-b border-gray-100">
@@ -288,15 +285,13 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* --- CREATE GROUP MODAL --- */}
+      {/* Modal logic remains same... */}
       {showGroupModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[3rem] p-10 max-w-md w-full border border-white/20 shadow-2xl">
             <h2 className="text-3xl font-black italic tracking-tighter mb-2">NEW GROUP</h2>
-            <p className="text-gray-400 text-[10px] font-black uppercase mb-8">Assigning {selectedIds.length} students</p>
-            
-            <div className="space-y-6">
-              <input type="text" placeholder="Group Name (e.g. Cultural Team)" className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none outline-none font-bold text-gray-700" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
+            <div className="space-y-6 mt-8">
+              <input type="text" placeholder="Group Name" className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none outline-none font-bold text-gray-700" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
               <div className="grid grid-cols-2 gap-4">
                 <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold text-sm outline-none" value={newGroupYear} onChange={e => setNewGroupYear(e.target.value)}>
                   <option value="N/A">N/A</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
@@ -306,7 +301,6 @@ export default function AdminDashboard() {
                 </select>
               </div>
             </div>
-
             <div className="flex gap-4 mt-10">
               <button onClick={() => setShowGroupModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-600 font-black rounded-2xl uppercase text-[10px]">Cancel</button>
               <button onClick={handleBulkGroup} className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-[10px] shadow-xl shadow-blue-100">Finalize</button>

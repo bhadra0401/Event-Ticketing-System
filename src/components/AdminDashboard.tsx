@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase, StudentWithTicket, EventSettings } from '../lib/supabase';
-import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3, RotateCcw } from 'lucide-react';
+import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3, RotateCcw, CheckCircle } from 'lucide-react';
 import EventSettingsModal from './EventSettingsModal';
 import AddStudentModal from './AddStudentModal';
 
@@ -130,14 +130,17 @@ export default function AdminDashboard() {
   };
 
   const deactivateTicket = async (studentId: string) => {
-    if (!confirm("Deactivate this ticket? The link will no longer show the ticket to the student.")) return;
+    if (!confirm("Deactivate this ticket? The student will be blocked from accessing the ticket page.")) return;
     setLoading(true);
-    const { error } = await supabase
-      .from('tickets')
-      .update({ status: 'pending' })
-      .eq('student_id', studentId);
-    
-    if (!error) loadData();
+    await supabase.from('tickets').update({ status: 'pending' }).eq('student_id', studentId);
+    loadData();
+    setLoading(false);
+  };
+
+  const reactivateTicket = async (studentId: string) => {
+    setLoading(true);
+    await supabase.from('tickets').update({ status: 'sent' }).eq('student_id', studentId);
+    loadData();
     setLoading(false);
   };
 
@@ -172,11 +175,11 @@ export default function AdminDashboard() {
 
   if (!session && !loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full border border-gray-100 font-sans text-center">
-          <h1 className="text-3xl font-black italic tracking-tighter mb-8 uppercase text-gray-900">Admin Access</h1>
-          <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-4 outline-none font-bold" />
-          <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-8 outline-none font-bold" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 text-center">
+        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full border border-gray-100 font-sans">
+          <h1 className="text-3xl font-black italic tracking-tighter mb-8 uppercase">Admin Access</h1>
+          <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-4 outline-none border-none font-bold" />
+          <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-8 outline-none border-none font-bold" />
           <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs hover:bg-gray-800 transition">Login</button>
         </form>
       </div>
@@ -209,7 +212,7 @@ export default function AdminDashboard() {
             <h3 className="text-6xl font-black italic tracking-tighter">
               {students.filter(s => s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in').length}
             </h3>
-            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">Total Tickets Sent</p>
+            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">Tickets Active</p>
           </div>
         </div>
 
@@ -217,7 +220,7 @@ export default function AdminDashboard() {
         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
           
           <div className="flex gap-2">
@@ -252,7 +255,7 @@ export default function AdminDashboard() {
             {selectedIds.length > 0 && (
               <>
                 <button onClick={() => { setNewGroupName(groupFilter !== 'all' ? groupFilter : ''); setShowGroupModal(true); }} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 active:scale-95 transition-all">
-                  <Layers size={16}/> Group Selected ({selectedIds.length})
+                  <Layers size={16}/> Group/Update ({selectedIds.length})
                 </button>
                 <button onClick={() => handleBulkGroupAction('remove')} className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase border border-red-100 hover:bg-red-100 transition">
                   <UserMinus size={16}/> Remove from Group
@@ -266,7 +269,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Student Table */}
         <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-50 overflow-hidden">
           <table className="w-full text-left">
             <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] uppercase text-gray-400">
@@ -279,7 +282,7 @@ export default function AdminDashboard() {
                 <th className="p-8 cursor-pointer group" onClick={() => toggleSort('name')}>Student {sortField === 'name' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
                 <th className="p-8 cursor-pointer group" onClick={() => toggleSort('roll_number')}>Group Details {sortField === 'roll_number' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
                 <th className="p-8">Status</th>
-                <th className="p-8 text-right text-gray-400 uppercase tracking-widest font-black text-[9px]">Manage Ticket</th>
+                <th className="p-8 text-right text-gray-400 font-black text-[9px] uppercase tracking-widest">Manage Ticket</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -298,15 +301,28 @@ export default function AdminDashboard() {
                   </td>
                   <td className="p-8 text-right">
                     <div className="flex gap-2 justify-end">
+                      {/* Reactivate Button (Green Check) - Show if Pending and has a ticket record */}
+                      {s.ticket?.status === 'pending' && s.ticket?.id && (
+                        <button 
+                          onClick={() => reactivateTicket(s.id)}
+                          className="p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition shadow-sm"
+                          title="Reactivate Access (No Email)"
+                        >
+                          <CheckCircle size={16}/>
+                        </button>
+                      )}
+                      
+                      {/* Deactivate Button (Red Rotate) - Show if Active */}
                       {(s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in') && (
                         <button 
                           onClick={() => deactivateTicket(s.id)}
                           className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition shadow-sm"
-                          title="Deactivate/Void Ticket"
+                          title="Block/Deactivate Ticket"
                         >
                           <RotateCcw size={16}/>
                         </button>
                       )}
+
                       <button onClick={() => sendTicket(s)} disabled={sendingTicket === s.id} className="bg-gray-900 text-white p-3 rounded-xl shadow-lg hover:scale-110 disabled:opacity-30 transition-all">
                         <Mail size={16}/>
                       </button>
@@ -324,7 +340,6 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[3rem] p-10 max-w-md w-full shadow-2xl border border-white/20">
             <h2 className="text-2xl font-black italic mb-2 uppercase text-gray-900 tracking-tighter">Assign Group</h2>
-            <p className="text-[10px] font-black uppercase text-gray-400 mb-8">Move {selectedIds.length} members into group</p>
             <div className="space-y-4">
               <input type="text" placeholder="Group Label" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-sm border-none focus:ring-2 focus:ring-blue-500" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
               <div className="grid grid-cols-2 gap-4">

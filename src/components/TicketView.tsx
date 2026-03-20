@@ -160,13 +160,14 @@ export default function TicketView() {
               <p className="font-extrabold text-xl text-[#fdfbf7] leading-tight font-mono">{ticket.id.slice(0, 8).toUpperCase()}</p>
             </div>
 
-            {/* Signature Placement Fix */}
+            {/* Signature Fixed for White Color and Position */}
             <div className="text-right relative">
-              <div className="absolute -top-12 right-0 w-36 h-20 pointer-events-none z-20">
+              <div className="absolute -top-16 right-0 w-36 h-24 pointer-events-none z-20">
                 <img 
                   src="/signature.png" 
-                  alt="Authorized" 
-                  className="w-full h-full object-contain invert-[1] brightness-[5] contrast-[200%] rotate-[-4deg] drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]"
+                  alt="Authorized Signature" 
+                  {/* We use invert to flip black to white, and extreme brightness to clear any shadows */}
+                  className="w-full h-full object-contain invert-[1] brightness-[10] contrast-[100%] rotate-[-4deg]"
                   onError={(e) => (e.currentTarget.style.display = 'none')}
                 />
               </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase, StudentWithTicket, EventSettings } from '../lib/supabase';
-import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3, RotateCcw, CheckCircle } from 'lucide-react';
+import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3, RotateCcw, CheckCircle, Users } from 'lucide-react';
 import EventSettingsModal from './EventSettingsModal';
 import AddStudentModal from './AddStudentModal';
 
@@ -28,7 +28,6 @@ export default function AdminDashboard() {
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [eventSettings, setEventSettings] = useState<EventSettings | null>(null);
 
-  // Group Form
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupYear, setNewGroupYear] = useState('N/A');
   const [newGroupSec, setNewGroupSec] = useState('N/A');
@@ -70,6 +69,7 @@ export default function AdminDashboard() {
     return groups;
   }, [students]);
 
+  // --- FILTER & SORT LOGIC ---
   const filteredAndSortedStudents = useMemo(() => {
     let result = students.filter(s => {
       const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
@@ -175,9 +175,9 @@ export default function AdminDashboard() {
 
   if (!session && !loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 text-center">
-        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full border border-gray-100 font-sans">
-          <h1 className="text-3xl font-black italic tracking-tighter mb-8 uppercase">Admin Access</h1>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full border border-gray-100 font-sans text-center">
+          <h1 className="text-3xl font-black italic tracking-tighter mb-8 uppercase text-gray-900">Admin Access</h1>
           <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-4 outline-none border-none font-bold" />
           <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-8 outline-none border-none font-bold" />
           <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs hover:bg-gray-800 transition">Login</button>
@@ -216,15 +216,28 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Filter Toolbar Header */}
+        <div className="flex items-center justify-between mb-4 px-2">
+           <div className="flex items-center gap-2">
+              <Users size={16} className="text-blue-600" />
+              <span className="text-sm font-black text-gray-900 uppercase tracking-tight">
+                Found {filteredAndSortedStudents.length} members
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-100 px-2 py-0.5 rounded-full">
+                Filtered List
+              </span>
+           </div>
+        </div>
+
         {/* Filters Panel */}
         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none focus:ring-2 focus:ring-blue-500 transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
           
           <div className="flex gap-2">
-            <select className="flex-1 bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
+            <select className="flex-1 bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
               <option value="all">Group: All</option>
               {Object.keys(groupStats).map(g => <option key={g} value={g}>{g}</option>)}
             </select>
@@ -233,17 +246,17 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
              <option value="all">Year: All</option>
              <option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option><option value="N/A">N/A</option>
           </select>
 
-          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
              <option value="all">Section: All</option>
              <option value="A">Sec A</option><option value="B">Sec B</option><option value="C">Sec C</option><option value="D">Sec D</option><option value="N/A">N/A</option>
           </select>
 
-          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
              <option value="all">Status: All</option>
              <option value="sent">Sent</option><option value="pending">Pending</option><option value="checked_in">Checked In</option>
           </select>
@@ -255,7 +268,7 @@ export default function AdminDashboard() {
             {selectedIds.length > 0 && (
               <>
                 <button onClick={() => { setNewGroupName(groupFilter !== 'all' ? groupFilter : ''); setShowGroupModal(true); }} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 active:scale-95 transition-all">
-                  <Layers size={16}/> Group/Update ({selectedIds.length})
+                  <Layers size={16}/> Group Selected ({selectedIds.length})
                 </button>
                 <button onClick={() => handleBulkGroupAction('remove')} className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase border border-red-100 hover:bg-red-100 transition">
                   <UserMinus size={16}/> Remove from Group
@@ -269,10 +282,10 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Student Table */}
+        {/* Table */}
         <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-50 overflow-hidden">
           <table className="w-full text-left">
-            <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] uppercase text-gray-400">
+            <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] uppercase text-gray-400 tracking-widest">
               <tr>
                 <th className="p-8 w-12 text-center">
                   <button onClick={() => setSelectedIds(selectedIds.length === filteredAndSortedStudents.length ? [] : filteredAndSortedStudents.map(s => s.id))}>
@@ -301,28 +314,12 @@ export default function AdminDashboard() {
                   </td>
                   <td className="p-8 text-right">
                     <div className="flex gap-2 justify-end">
-                      {/* Reactivate Button (Green Check) - Show if Pending and has a ticket record */}
                       {s.ticket?.status === 'pending' && s.ticket?.id && (
-                        <button 
-                          onClick={() => reactivateTicket(s.id)}
-                          className="p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition shadow-sm"
-                          title="Reactivate Access (No Email)"
-                        >
-                          <CheckCircle size={16}/>
-                        </button>
+                        <button onClick={() => reactivateTicket(s.id)} className="p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition shadow-sm" title="Reactivate Access"><CheckCircle size={16}/></button>
                       )}
-                      
-                      {/* Deactivate Button (Red Rotate) - Show if Active */}
                       {(s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in') && (
-                        <button 
-                          onClick={() => deactivateTicket(s.id)}
-                          className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition shadow-sm"
-                          title="Block/Deactivate Ticket"
-                        >
-                          <RotateCcw size={16}/>
-                        </button>
+                        <button onClick={() => deactivateTicket(s.id)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition shadow-sm" title="Block Ticket"><RotateCcw size={16}/></button>
                       )}
-
                       <button onClick={() => sendTicket(s)} disabled={sendingTicket === s.id} className="bg-gray-900 text-white p-3 rounded-xl shadow-lg hover:scale-110 disabled:opacity-30 transition-all">
                         <Mail size={16}/>
                       </button>
@@ -340,13 +337,13 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[3rem] p-10 max-w-md w-full shadow-2xl border border-white/20">
             <h2 className="text-2xl font-black italic mb-2 uppercase text-gray-900 tracking-tighter">Assign Group</h2>
-            <div className="space-y-4">
+            <div className="space-y-4 mt-6">
               <input type="text" placeholder="Group Label" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-sm border-none focus:ring-2 focus:ring-blue-500" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
               <div className="grid grid-cols-2 gap-4">
-                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none border-none" value={newGroupYear} onChange={e => setNewGroupYear(e.target.value)}>
+                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none border-none focus:ring-2 focus:ring-blue-500" value={newGroupYear} onChange={e => setNewGroupYear(e.target.value)}>
                   <option value="N/A">Year N/A</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
                 </select>
-                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none border-none" value={newGroupSec} onChange={e => setNewGroupSec(e.target.value)}>
+                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none border-none focus:ring-2 focus:ring-blue-500" value={newGroupSec} onChange={e => setNewGroupSec(e.target.value)}>
                   <option value="N/A">Sec N/A</option><option value="A">Sec A</option><option value="B">Sec B</option><option value="C">Sec C</option><option value="D">Sec D</option>
                 </select>
               </div>

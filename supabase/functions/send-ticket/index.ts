@@ -1,6 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createTransport } from "npm:nodemailer";
+
 declare const Deno: any;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -11,6 +13,7 @@ interface TicketEmailRequest {
   email: string;
   name: string;
   ticketId: string;
+  isUpdate?: boolean; // New flag added here
 }
 
 Deno.serve(async (req: Request) => {
@@ -19,13 +22,22 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { email, name, ticketId }: TicketEmailRequest = await req.json();
+    const { email, name, ticketId, isUpdate }: TicketEmailRequest = await req.json();
 
     if (!email || !name || !ticketId) {
       throw new Error("Missing required fields");
     }
 
     const ticketUrl = `${req.headers.get('origin') || 'http://localhost:5173'}/ticket/${ticketId}`;
+
+    // Dynamic content based on whether it's a new ticket or an update
+    const subject = isUpdate 
+      ? "🔄 Update: Your Farewell Party Ticket Details" 
+      : "🎉 Your Farewell Party Ticket is Here!";
+    
+    const messageHeadline = isUpdate 
+      ? "Your ticket details have been updated!" 
+      : "Your ticket for the Farewell Party is ready!";
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -38,6 +50,7 @@ Deno.serve(async (req: Request) => {
           .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; }
           .button { display: inline-block; padding: 15px 30px; background: #8b4513; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
           .warning { background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 4px; }
+          .update-badge { display: inline-block; background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
         </style>
       </head>
       <body>
@@ -46,8 +59,9 @@ Deno.serve(async (req: Request) => {
           <p style="margin: 10px 0 0 0; opacity: 0.9;">Dance • Music • Nightlife</p>
         </div>
         <div class="content">
+          ${isUpdate ? '<div class="update-badge">INFORMATION UPDATED</div>' : ''}
           <h2>Hi ${name}!</h2>
-          <p>Your ticket for the Farewell Party is ready! We're excited to celebrate with you.</p>
+          <p>${messageHeadline} We're excited to celebrate with you.</p>
           <div style="text-align: center;">
             <a href="${ticketUrl}" class="button">View Your Digital Ticket</a>
           </div>
@@ -64,7 +78,6 @@ Deno.serve(async (req: Request) => {
       </html>
     `;
 
-    // Connect to Gmail
     const transporter = createTransport({
       service: "gmail",
       auth: {
@@ -73,11 +86,10 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    // Send the email
     await transporter.sendMail({
       from: `"Farewell Party Team" <${Deno.env.get("GMAIL_USER")}>`,
       to: email,
-      subject: "🎉 Your Farewell Party Ticket is Here!",
+      subject: subject,
       html: emailHtml,
     });
 

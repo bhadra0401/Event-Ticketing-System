@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase, StudentWithTicket, EventSettings } from '../lib/supabase';
-import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3, RotateCcw, CheckCircle, Users } from 'lucide-react';
+import { Mail, Settings as SettingsIcon, UserPlus, RefreshCw, Search, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, Layers, BarChart3, UserMinus, Edit3, RotateCcw, CheckCircle, Users, BellRing } from 'lucide-react';
 import EventSettingsModal from './EventSettingsModal';
 import AddStudentModal from './AddStudentModal';
 
@@ -25,6 +25,7 @@ export default function AdminDashboard() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showAddStudent, setShowAddStudent] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [eventSettings, setEventSettings] = useState<EventSettings | null>(null);
 
@@ -69,7 +70,6 @@ export default function AdminDashboard() {
     return groups;
   }, [students]);
 
-  // --- FILTER & SORT LOGIC ---
   const filteredAndSortedStudents = useMemo(() => {
     let result = students.filter(s => {
       const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.roll_number.toLowerCase().includes(searchTerm.toLowerCase());
@@ -117,20 +117,13 @@ export default function AdminDashboard() {
     if (!newName || newName.trim().toUpperCase() === groupFilter.toUpperCase()) return;
 
     setLoading(true);
-    const { error } = await supabase
-      .from('students')
-      .update({ group_name: newName.trim().toUpperCase() })
-      .eq('group_name', groupFilter);
-
-    if (!error) {
-      setGroupFilter(newName.trim().toUpperCase());
-      loadData();
-    }
+    const { error } = await supabase.from('students').update({ group_name: newName.trim().toUpperCase() }).eq('group_name', groupFilter);
+    if (!error) { setGroupFilter(newName.trim().toUpperCase()); loadData(); }
     setLoading(false);
   };
 
   const deactivateTicket = async (studentId: string) => {
-    if (!confirm("Deactivate this ticket? The student will be blocked from accessing the ticket page.")) return;
+    if (!confirm("Deactivate this ticket? link will no longer show the ticket.")) return;
     setLoading(true);
     await supabase.from('tickets').update({ status: 'pending' }).eq('student_id', studentId);
     loadData();
@@ -142,6 +135,30 @@ export default function AdminDashboard() {
     await supabase.from('tickets').update({ status: 'sent' }).eq('student_id', studentId);
     loadData();
     setLoading(false);
+  };
+
+  // NEW: Send updated details mail
+  const sendUpdateNotification = async (student: StudentWithTicket) => {
+    if (!student.ticket?.id) return;
+    setSendingTicket(student.id);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-ticket`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ 
+          email: student.email, 
+          name: student.name, 
+          ticketId: student.ticket.id,
+          isUpdate: true // Edge function should handle this flag to change email template
+        })
+      });
+      if (response.ok) alert(`Update notification sent to ${student.name}!`);
+    } finally {
+      setSendingTicket(null);
+    }
   };
 
   const sendTicket = async (student: StudentWithTicket) => {
@@ -176,11 +193,11 @@ export default function AdminDashboard() {
   if (!session && !loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full border border-gray-100 font-sans text-center">
-          <h1 className="text-3xl font-black italic tracking-tighter mb-8 uppercase text-gray-900">Admin Access</h1>
+        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }); }} className="bg-white p-10 rounded-[2rem] shadow-xl max-w-md w-full font-sans text-center">
+          <h1 className="text-3xl font-black italic mb-8 uppercase text-gray-900">Admin Access</h1>
           <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-4 outline-none border-none font-bold" />
           <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl mb-8 outline-none border-none font-bold" />
-          <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs hover:bg-gray-800 transition">Login</button>
+          <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs">Login</button>
         </form>
       </div>
     );
@@ -190,6 +207,17 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-[#fcfcfd] pb-20 font-sans">
       <div className="max-w-7xl mx-auto px-4 py-8">
         
+        {/* Header with Settings Button */}
+        <div className="flex justify-between items-center mb-8">
+           <div>
+              <h1 className="text-3xl font-black italic tracking-tighter text-gray-900 uppercase">Management Panel</h1>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">KhIT Event Ticketing v2.0</p>
+           </div>
+           <button onClick={() => setShowSettings(true)} className="flex items-center gap-2 px-5 py-3 bg-white border border-gray-100 rounded-2xl font-black text-[10px] uppercase shadow-sm hover:bg-gray-50 transition">
+             <SettingsIcon size={16} className="text-gray-400" /> Event Config
+           </button>
+        </div>
+
         {/* Progress Section */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
           <div className="lg:col-span-3 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
@@ -212,32 +240,19 @@ export default function AdminDashboard() {
             <h3 className="text-6xl font-black italic tracking-tighter">
               {students.filter(s => s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in').length}
             </h3>
-            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">Tickets Active</p>
+            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-2">Active Invitations</p>
           </div>
-        </div>
-
-        {/* Filter Toolbar Header */}
-        <div className="flex items-center justify-between mb-4 px-2">
-           <div className="flex items-center gap-2">
-              <Users size={16} className="text-blue-600" />
-              <span className="text-sm font-black text-gray-900 uppercase tracking-tight">
-                Found {filteredAndSortedStudents.length} members
-              </span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-100 px-2 py-0.5 rounded-full">
-                Filtered List
-              </span>
-           </div>
         </div>
 
         {/* Filters Panel */}
         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none focus:ring-2 focus:ring-blue-500 transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl text-xs font-bold outline-none border-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
           
           <div className="flex gap-2">
-            <select className="flex-1 bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
+            <select className="flex-1 bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={groupFilter} onChange={e => setGroupFilter(e.target.value)}>
               <option value="all">Group: All</option>
               {Object.keys(groupStats).map(g => <option key={g} value={g}>{g}</option>)}
             </select>
@@ -246,20 +261,30 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
              <option value="all">Year: All</option>
              <option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option><option value="N/A">N/A</option>
           </select>
 
-          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
              <option value="all">Section: All</option>
              <option value="A">Sec A</option><option value="B">Sec B</option><option value="C">Sec C</option><option value="D">Sec D</option><option value="N/A">N/A</option>
           </select>
 
-          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <select className="bg-gray-50 px-4 py-3 rounded-xl font-black text-[10px] text-gray-500 uppercase outline-none" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
              <option value="all">Status: All</option>
              <option value="sent">Sent</option><option value="pending">Pending</option><option value="checked_in">Checked In</option>
           </select>
+        </div>
+
+        {/* Multi-Select Stats Header */}
+        <div className="flex items-center justify-between mb-4 px-2">
+           <div className="flex items-center gap-2">
+              <Users size={16} className="text-blue-600" />
+              <span className="text-sm font-black text-gray-900 uppercase tracking-tight">
+                Found {filteredAndSortedStudents.length} members
+              </span>
+           </div>
         </div>
 
         {/* Management Buttons */}
@@ -267,7 +292,7 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap gap-2">
             {selectedIds.length > 0 && (
               <>
-                <button onClick={() => { setNewGroupName(groupFilter !== 'all' ? groupFilter : ''); setShowGroupModal(true); }} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 active:scale-95 transition-all">
+                <button onClick={() => { setNewGroupName(groupFilter !== 'all' ? groupFilter : ''); setShowGroupModal(true); }} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">
                   <Layers size={16}/> Group Selected ({selectedIds.length})
                 </button>
                 <button onClick={() => handleBulkGroupAction('remove')} className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-black text-[10px] uppercase border border-red-100 hover:bg-red-100 transition">
@@ -282,18 +307,18 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Student Table */}
         <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-50 overflow-hidden">
           <table className="w-full text-left">
-            <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] uppercase text-gray-400 tracking-widest">
+            <thead className="bg-gray-50/50 border-b border-gray-100 font-black text-[10px] uppercase text-gray-400">
               <tr>
                 <th className="p-8 w-12 text-center">
                   <button onClick={() => setSelectedIds(selectedIds.length === filteredAndSortedStudents.length ? [] : filteredAndSortedStudents.map(s => s.id))}>
                     {selectedIds.length === filteredAndSortedStudents.length && filteredAndSortedStudents.length > 0 ? <CheckSquare className="text-blue-600"/> : <Square className="text-gray-200"/>}
                   </button>
                 </th>
-                <th className="p-8 cursor-pointer group" onClick={() => toggleSort('name')}>Student {sortField === 'name' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
-                <th className="p-8 cursor-pointer group" onClick={() => toggleSort('roll_number')}>Group Details {sortField === 'roll_number' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
+                <th className="p-8 cursor-pointer" onClick={() => toggleSort('name')}>Student {sortField === 'name' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
+                <th className="p-8 cursor-pointer" onClick={() => toggleSort('roll_number')}>Details {sortField === 'roll_number' && (sortOrder === 'asc' ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)}</th>
                 <th className="p-8">Status</th>
                 <th className="p-8 text-right text-gray-400 font-black text-[9px] uppercase tracking-widest">Manage Ticket</th>
               </tr>
@@ -302,7 +327,7 @@ export default function AdminDashboard() {
               {filteredAndSortedStudents.map(s => (
                 <tr key={s.id} className={selectedIds.includes(s.id) ? 'bg-blue-50/40' : 'hover:bg-gray-50/30 transition-all'}>
                   <td className="p-8 text-center"><button onClick={() => setSelectedIds(prev => prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id])}>{selectedIds.includes(s.id) ? <CheckSquare className="text-blue-600" size={20}/> : <Square className="text-gray-200" size={20}/>}</button></td>
-                  <td className="p-8 font-black text-gray-900 uppercase text-xs tracking-tight">{s.name}<br/><span className="text-[10px] text-gray-300">{s.roll_number}</span></td>
+                  <td className="p-8 font-black text-gray-900 uppercase text-xs">{s.name}<br/><span className="text-[10px] text-gray-300 font-normal">{s.roll_number}</span></td>
                   <td className="p-8"><span className="text-[10px] font-black uppercase text-gray-700">{s.group_name}</span><br/><span className="text-[9px] font-bold text-blue-500 uppercase opacity-50">Yr {s.year} • Sec {s.section}</span></td>
                   <td className="p-8">
                     <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border tracking-widest ${
@@ -313,12 +338,19 @@ export default function AdminDashboard() {
                     </span>
                   </td>
                   <td className="p-8 text-right">
-                    <div className="flex gap-2 justify-end">
+                    <div className="flex gap-2 justify-end items-center">
+                      {(s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in') && (
+                        <>
+                          <button onClick={() => sendUpdateNotification(s)} disabled={sendingTicket === s.id} className="p-2 bg-yellow-50 text-yellow-600 rounded-xl hover:bg-yellow-100 transition shadow-sm" title="Notify Update">
+                            <BellRing size={16}/>
+                          </button>
+                          <button onClick={() => deactivateTicket(s.id)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition shadow-sm" title="Void Ticket">
+                            <RotateCcw size={16}/>
+                          </button>
+                        </>
+                      )}
                       {s.ticket?.status === 'pending' && s.ticket?.id && (
                         <button onClick={() => reactivateTicket(s.id)} className="p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition shadow-sm" title="Reactivate Access"><CheckCircle size={16}/></button>
-                      )}
-                      {(s.ticket?.status === 'sent' || s.ticket?.status === 'checked_in') && (
-                        <button onClick={() => deactivateTicket(s.id)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition shadow-sm" title="Block Ticket"><RotateCcw size={16}/></button>
                       )}
                       <button onClick={() => sendTicket(s)} disabled={sendingTicket === s.id} className="bg-gray-900 text-white p-3 rounded-xl shadow-lg hover:scale-110 disabled:opacity-30 transition-all">
                         <Mail size={16}/>
@@ -332,25 +364,28 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
+      {showSettings && eventSettings && (
+        <EventSettingsModal settings={eventSettings} onClose={() => setShowSettings(false)} onUpdate={loadData} />
+      )}
       {showGroupModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[3rem] p-10 max-w-md w-full shadow-2xl border border-white/20">
             <h2 className="text-2xl font-black italic mb-2 uppercase text-gray-900 tracking-tighter">Assign Group</h2>
             <div className="space-y-4 mt-6">
-              <input type="text" placeholder="Group Label" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-sm border-none focus:ring-2 focus:ring-blue-500" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
+              <input type="text" placeholder="Group Label" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-sm" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
               <div className="grid grid-cols-2 gap-4">
-                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none border-none focus:ring-2 focus:ring-blue-500" value={newGroupYear} onChange={e => setNewGroupYear(e.target.value)}>
+                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none" value={newGroupYear} onChange={e => setNewGroupYear(e.target.value)}>
                   <option value="N/A">Year N/A</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
                 </select>
-                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none border-none focus:ring-2 focus:ring-blue-500" value={newGroupSec} onChange={e => setNewGroupSec(e.target.value)}>
+                <select className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-sm outline-none" value={newGroupSec} onChange={e => setNewGroupSec(e.target.value)}>
                   <option value="N/A">Sec N/A</option><option value="A">Sec A</option><option value="B">Sec B</option><option value="C">Sec C</option><option value="D">Sec D</option>
                 </select>
               </div>
             </div>
             <div className="flex gap-4 mt-10">
-              <button onClick={() => setShowGroupModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-600 font-black rounded-2xl uppercase text-[10px] tracking-widest">Cancel</button>
-              <button onClick={() => handleBulkGroupAction('update')} className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100">Apply Changes</button>
+              <button onClick={() => setShowGroupModal(false)} className="flex-1 py-4 bg-gray-100 text-gray-600 font-black rounded-2xl uppercase text-[10px]">Cancel</button>
+              <button onClick={() => handleBulkGroupAction('update')} className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-[10px] shadow-xl">Apply</button>
             </div>
           </div>
         </div>
